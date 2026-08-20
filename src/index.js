@@ -1,12 +1,15 @@
 // dsh-archived-sessions — host half.
 //
 // Serves /archived-sessions/* JSON routes (list / restore / restore-many /
-// delete / delete-many) over the host `webServer`. The browser Settings
-// section ("归档会话") talks to these. Reads/writes the durable workspace
-// archive set (workspaceRegistry + storageDomain), folds titles/dates/workspace
-// tags from session persistence, and physically removes a session's log file
-// on delete.
-import { unlink } from 'node:fs/promises'
+// delete / delete-many / sessions / workspaces / move) over the host
+// `webServer`. The browser Settings sections ("归档会话" & "移动会话") talk to
+// these. Reads/writes the durable workspace archive set
+// (workspaceRegistry + storageDomain), folds titles/dates/workspace tags from
+// session persistence, physically removes a session's log file on delete, and
+// relocates a conversation (session) between workspaces on move.
+import { mkdir, realpath, rename, unlink } from 'node:fs/promises'
+import { basename, isAbsolute, join } from 'node:path'
+import { homedir } from 'node:os'
 
 export const name = 'dsh-archived-sessions'
 export const inject = ['webServer', 'workspaceRegistry', 'sessionPersistence', 'sessionQuery', 'storageDomain']
@@ -168,6 +171,141 @@ export function apply(ctx) {
     return { ok: true, deleted: true, removedPath }
   }
 
+  // ---- "move conversation between workspaces" helper -----------------------
+  // DSH binds a conversation to the workspace whose canonical directory path
+  // equals the session's stored cwd. Moving it therefore means: (1) adopt the
+  // target path as a workspace (create if needed), (2) durably relocate the
+  // session's log so its header carries the new cwd, and (3) reassign the
+  // workspace membership (detach everywhere, attach to target). The log
+  // relocation goes through the persistence service's own encoder (handles the
+  // zstd artifact encoding) with a backup + rollback so a failure never leaves
+  // the session half-moved.
+
+  async function moveTargetWorkspace(rawPath) {
+    if (typeof rawPath !== 'string' || !rawPath.trim()) throw new Error('缺少目标工作区路径')
+    let p = String(rawPath).trim()
+    if (p.startsWith('~/')) p = join(homedir(), p.slice(2))
+    if (!isAbsolute(p)) p = join(homedir(), p)
+    let canonical = null
+    try { canonical = await realpath(p) } catch (e) { canonical = null }
+    if (canonical === null) {
+      await mkdir(p, { recursive: true })
+      canonical = await realpath(p)
+    }
+    return { canonical, entity: await w.create(canonical, basename(canonical) || 'workspace') }
+  }
+
+  async function moveOne(sid, targetPath) {
+    const sessions = ctx.get('sessions')
+    if (sessions && sessions.get(sid)) {
+      throw new Error('该会话当前处于打开状态，请先切换到别的会话再移动。')
+    }
+    const r = await sp.readFrom(sid, 0)
+    if (!r || !r.meta) throw new Error('无法读取该会话的日志')
+    const meta = r.meta
+    const events = r.events
+    const oldCwd = meta.cwd || null
+
+    const { canonical, entity: target } = await moveTargetWorkspace(targetPath)
+
+    if (oldCwd) {
+      let oldCanon = null
+      try { oldCanon = await realpath(oldCwd) } catch (e) { oldCanon = null }
+      if (oldCanon === canonical) {
+        return { ok: true, already: true, workspaceId: target.id, workspaceTitle: target.title }
+      }
+    }
+
+    const newHeader = Object.assign({}, meta, { cwd: canonical })
+
+    // 1) Back up the current log artifact before touching anything.
+    let oldPath = null
+    let backupPath = null
+    try {
+      const loc = sp.locate(meta)
+      if (loc && typeof loc.path === 'string' && loc.path) oldPath = loc.path
+    } catch (e) { oldPath = null }
+    if (oldPath) {
+      backupPath = `${oldPath}.move-backup-${Date.now()}`
+      try {
+        await rename(oldPath, backupPath)
+      } catch (e) {
+        if (e && e.code !== 'ENOENT') throw new Error('移动失败：无法备份旧的会话日志')
+        backupPath = null
+      }
+    }
+
+    const restore = async () => {
+      if (backupPath && oldPath) {
+        try { await rename(backupPath, oldPath) } catch (e) { /* best-effort */ }
+      }
+    }
+
+    // 2) Relocate the log through the persistence service (re-encodes header).
+    if (typeof sp.create !== 'function' || typeof sp.append !== 'function') {
+      await restore()
+      throw new Error('当前会话存储后端不支持安全移动，已中止。')
+    }
+    try {
+      await sp.create(newHeader)
+      await sp.append(sid, events)
+      const check = await sp.readFrom(sid, 0)
+      if (!check || !check.meta || check.meta.cwd !== canonical) {
+        throw new Error('移动后校验失败：会话工作目录未正确更新')
+      }
+    } catch (e) {
+      await restore()
+      throw new Error('移动会话日志失败：' + String((e && e.message) || e))
+    }
+    if (backupPath) { try { await unlink(backupPath) } catch (e) { /* best-effort */ } }
+
+    // 3) Reassign workspace membership (durable records + in-memory index).
+    for (const ent of w.list()) {
+      try { await ent.detachSession(sid) } catch (e) { /* ignore */ }
+    }
+    if (w.headers && typeof w.headers.set === 'function') w.headers.set(sid, newHeader)
+    if (w.sessionPaths && typeof w.sessionPaths.set === 'function') w.sessionPaths.set(sid, canonical)
+    await target.attachSession(sid)
+
+    return {
+      ok: true,
+      moved: true,
+      workspaceId: target.id,
+      workspaceTitle: target.title,
+      workspacePath: canonical,
+    }
+  }
+
+  async function listWorkspaces() {
+    const out = []
+    try {
+      for (const ent of w.list()) out.push({ workspaceId: ent.id, title: ent.title, path: ent.path })
+    } catch (e) { /* ignore */ }
+    return out
+  }
+
+  async function allSessionItems() {
+    let materialized = new Set()
+    let live = ctx.get('sessions')
+    try {
+      const headers = await sp.list()
+      materialized = new Set(headers.map((h) => String(h.id)))
+    } catch (e) { /* best-effort */ }
+    const ids = []
+    try { for (const header of await sp.list()) ids.push(String(header.id)) } catch (e) { /* ignore */ }
+    if (live) { try { live.list().forEach((s) => { if (!ids.includes(String(s.id))) ids.push(String(s.id)) }) } catch (e) { /* ignore */ } }
+    wsByPath = {}
+    try { for (const ent of w.list()) wsByPath[ent.path] = ent } catch (e) { wsByPath = {} }
+    const currentArchived = new Set((await archivedState().catch(() => ({ archivedSessionIds: [] }))).archivedSessionIds || [])
+    const items = []
+    const CHUNK = 6
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const res2 = await Promise.all(ids.slice(i, i + CHUNK).map(resolveOne))
+      for (const it of res2) items.push({ ...it, archived: currentArchived.has(it.sessionId) })
+    }
+    return items
+  }
+
   ctx.effect(() => {
     const disposers = []
 
@@ -266,6 +404,50 @@ export function apply(ctx) {
             catch (e) { results.push({ sessionId: sid, ok: false, error: String((e && e.message) || e) }) }
           }
           json(res, { ok: true, deleted: results.filter((r) => r.ok).length, results })
+        } catch (e) {
+          json(res, { ok: false, error: String((e && e.message) || e) }, 500)
+        }
+      },
+    }))
+
+    // All conversations (for the "移动会话" panel).
+    disposers.push(ctx.webServer.register({
+      kind: 'exact',
+      path: '/archived-sessions/sessions',
+      handler: async (req, res) => {
+        try {
+          json(res, { items: await allSessionItems() })
+        } catch (e) {
+          json(res, { error: String((e && e.message) || e) }, 500)
+        }
+      },
+    }))
+
+    // Available target workspaces (for the move picker).
+    disposers.push(ctx.webServer.register({
+      kind: 'exact',
+      path: '/archived-sessions/workspaces',
+      handler: async (req, res) => {
+        try {
+          json(res, { items: await listWorkspaces() })
+        } catch (e) {
+          json(res, { error: String((e && e.message) || e) }, 500)
+        }
+      },
+    }))
+
+    // Move one conversation to a target workspace (existing path or a new one).
+    disposers.push(ctx.webServer.register({
+      kind: 'exact',
+      path: '/archived-sessions/move',
+      handler: async (req, res) => {
+        try {
+          const body = await readJsonBody(req)
+          const sid = body && typeof body.sessionId === 'string' ? body.sessionId : null
+          const target = body && typeof body.targetPath === 'string' ? body.targetPath : null
+          if (!sid) return json(res, { ok: false, error: 'missing sessionId' }, 400)
+          if (!target) return json(res, { ok: false, error: 'missing targetPath' }, 400)
+          json(res, { sessionId: sid, ...(await moveOne(sid, target)) })
         } catch (e) {
           json(res, { ok: false, error: String((e && e.message) || e) }, 500)
         }

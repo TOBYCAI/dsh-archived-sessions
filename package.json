@@ -1,7 +1,7 @@
 {
   "name": "dsh-archived-sessions",
-  "description": "DSH 设置面板「归档会话」管理器：查看、恢复、彻底删除已归档的 session，带所属工作区标签与会话日期。",
-  "version": "1.0.0",
+  "description": "DSH 设置面板「归档会话」管理器：查看、恢复、彻底删除已归档的 session，带所属工作区标签与会话日期；并支持把会话移动到不同工作区。",
+  "version": "1.0.1",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

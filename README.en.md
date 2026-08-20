@@ -4,8 +4,9 @@
 
 > Manage your **archived sessions** in DSH — view, restore, and permanently delete them.
 > Archive logo, session dates, workspace tags, and **batch multi-select** (restore / delete selected).
+> Also ships a **"Move Session"** panel to relocate any conversation to a different workspace (existing or a new directory).
 
-A persistent DSH plugin (host + browser halves). Manage every session that has been archived (hidden from the sidebar) under **Settings → 归档会话 (Archived Sessions)**.
+A persistent DSH plugin (host + browser halves). Manage every session that has been archived (hidden from the sidebar) under **Settings → 归档会话 (Archived Sessions)**, and relocate sessions between workspaces under **Settings → 移动会话 (Move Session)**.
 
 ## Features
 
@@ -13,6 +14,7 @@ A persistent DSH plugin (host + browser halves). Manage every session that has b
 - **Restore**: unarchive and put the session back into its group.
 - **Permanently delete**: physically removes the session log file + detaches workspace accounting — **irreversible** (asks for confirmation first).
 - **Batch multi-select**: one-click batch mode — select-all, restore selected, delete selected (single confirmation for batch delete).
+- **Move session to a workspace**: `Settings → 移动会话` lists every session (archived ones included); pick an **existing workspace** or type a **new directory path** (auto-created) and confirm — the session's working directory and log are migrated, and it moves into the corresponding workspace group. Sessions that are currently open must be switched away from first.
 - **Adaptive UI**: follows the theme tokens (light/dark), stacks vertically on narrow screens; loading / empty / error / busy states, keyboard focus and `prefers-reduced-motion` support.
 
 ## Screenshots
@@ -67,6 +69,9 @@ lib/client.js      pre-built client (ModuleLoader CJS handshake)
 | POST | `/archived-sessions/restore-many` | Unarchive many |
 | POST | `/archived-sessions/delete` | Permanently delete a single session (physically removes log, keeps hidden) |
 | POST | `/archived-sessions/delete-many` | Permanently delete many |
+| POST | `/archived-sessions/sessions` | List all sessions (with archived flag) for the Move Session panel |
+| POST | `/archived-sessions/workspaces` | List available target workspaces |
+| POST | `/archived-sessions/move` | Move a session to a target workspace `{ sessionId, targetPath }` |
 
 > On delete the session **stays archived** (is not unarchived), so it won't pop back into the sidebar / "ungrouped"; entries whose log is already gone are skipped.
 > DSH has no official session-delete API; this plugin implements "physically remove log + detach ownership + keep hidden".
