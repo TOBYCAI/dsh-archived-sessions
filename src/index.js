@@ -284,6 +284,17 @@ export function apply(ctx) {
     return out
   }
 
+  // Archive (hide) one session: adds its id to the durable archive set so it
+  // is dropped out of the sidebar. DSH requires the session to exist (live or
+  // persisted) — a genuine miss surfaces as an error.
+  async function archiveOne(sid) {
+    const state = await archivedState()
+    const list = state.archivedSessionIds.map(String)
+    if (list.includes(sid)) return { ok: true, archived: false }
+    await w.archiveSession(sid)
+    return { ok: true, archived: true }
+  }
+
   async function allSessionItems() {
     let materialized = new Set()
     let live = ctx.get('sessions')
@@ -448,6 +459,43 @@ export function apply(ctx) {
           if (!sid) return json(res, { ok: false, error: 'missing sessionId' }, 400)
           if (!target) return json(res, { ok: false, error: 'missing targetPath' }, 400)
           json(res, { sessionId: sid, ...(await moveOne(sid, target)) })
+        } catch (e) {
+          json(res, { ok: false, error: String((e && e.message) || e) }, 500)
+        }
+      },
+    }))
+
+    // Archive (hide) one session.
+    disposers.push(ctx.webServer.register({
+      kind: 'exact',
+      path: '/archived-sessions/archive',
+      handler: async (req, res) => {
+        try {
+          const body = await readJsonBody(req)
+          const sid = body && typeof body.sessionId === 'string' ? body.sessionId : null
+          if (!sid) return json(res, { ok: false, error: 'missing sessionId' }, 400)
+          json(res, { sessionId: sid, ...(await archiveOne(sid)) })
+        } catch (e) {
+          json(res, { ok: false, error: String((e && e.message) || e) }, 500)
+        }
+      },
+    }))
+
+    // Archive (hide) many sessions.
+    disposers.push(ctx.webServer.register({
+      kind: 'exact',
+      path: '/archived-sessions/archive-many',
+      handler: async (req, res) => {
+        try {
+          const body = await readJsonBody(req)
+          const ids = parseIds(body)
+          if (!ids || ids.length === 0) return json(res, { ok: false, error: 'missing sessionIds' }, 400)
+          const results = []
+          for (const sid of ids) {
+            try { results.push({ sessionId: sid, ok: true, ...(await archiveOne(sid)) }) }
+            catch (e) { results.push({ sessionId: sid, ok: false, error: String((e && e.message) || e) }) }
+          }
+          json(res, { ok: true, archived: results.filter((r) => r.ok).length, results })
         } catch (e) {
           json(res, { ok: false, error: String((e && e.message) || e) }, 500)
         }

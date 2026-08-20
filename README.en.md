@@ -2,20 +2,20 @@
 
 > English | [中文](./README.md)
 
-> Manage your **archived sessions** in DSH — view, restore, and permanently delete them.
-> Archive logo, session dates, workspace tags, and **batch multi-select** (restore / delete selected).
-> Also ships a **"Move Session"** panel to relocate any conversation to a different workspace (existing or a new directory).
+> Manage **all your sessions** in DSH from one place — **Session Manager**.
+> Archive / restore / permanently delete / move to another workspace, with workspace tags and session dates, plus batch actions.
+> Target directories can be an **existing workspace** or a **new path** (auto-created); the new-path mode also supports the **native OS directory picker**, and the settings nav gets a dedicated archive-box icon.
 
-A persistent DSH plugin (host + browser halves). Manage every session that has been archived (hidden from the sidebar) under **Settings → 归档会话 (Archived Sessions)**, and relocate sessions between workspaces under **Settings → 移动会话 (Move Session)**.
+A persistent DSH plugin (host + browser halves). Under **Settings → 会话管理 (Session Manager)** unify all conversations: archive (hide from sidebar), restore, permanently delete, and relocate between workspaces.
 
 ## Features
 
-- **View**: list all archived sessions — each row shows the title (falls back to the first user message), the **session date** (`createdAt`, localized), and a **workspace tag** (title or directory name; a dashed "原工作区已删除 / workspace deleted" tag when the original workspace is gone).
-- **Restore**: unarchive and put the session back into its group.
+- **Unified panel**: a single Session Manager entry with an **All / Archived** filter; each row shows the title (falls back to the first user message), **archive status** (active / archived), the **session date**, and a **workspace tag** (title or directory name; a dashed "原工作区已删除 / workspace deleted" tag when the original workspace is gone).
+- **Archive / Restore**: archive hides a session from the sidebar; restore unarchives and puts it back into its group.
 - **Permanently delete**: physically removes the session log file + detaches workspace accounting — **irreversible** (asks for confirmation first).
-- **Batch multi-select**: one-click batch mode — select-all, restore selected, delete selected (single confirmation for batch delete).
-- **Move session to a workspace**: `Settings → 移动会话` lists every session (archived ones included); pick an **existing workspace** or type a **new directory path** (auto-created) and confirm — the session's working directory and log are migrated, and it moves into the corresponding workspace group. Sessions that are currently open must be switched away from first.
-- **Adaptive UI**: follows the theme tokens (light/dark), stacks vertically on narrow screens; loading / empty / error / busy states, keyboard focus and `prefers-reduced-motion` support.
+- **Move to a workspace**: pick an **existing workspace**, or enter a **new directory path** (auto-created); the new-path mode also lets you open the **native OS directory picker** with a **「浏览…」** button. The session's working directory and log are migrated, and it moves into the corresponding workspace group. Sessions that are currently open must be switched away from first.
+- **Batch multi-select**: select-all / archive selected / restore selected / delete selected (single confirmation for batch delete).
+- **Adaptive UI**: follows the theme tokens (light/dark), stacks vertically on narrow screens; loading / empty / error / busy states, keyboard focus and `prefers-reduced-motion` support; dedicated archive-box nav icon.
 
 ## Screenshots
 
@@ -37,7 +37,7 @@ git clone https://github.com/TOBYCAI/dsh-archived-sessions.git
 dsh plugin --profile desktop add link:/path/to/dsh-archived-sessions
 ```
 
-> After installing, **restart DSH** (or refresh the page to reload the bundle). Then Settings → Archived Sessions becomes available.
+> After installing, **restart DSH** (or refresh the page to reload the bundle). Then Settings → 会话管理 (Session Manager) becomes available.
 
 ## Uninstall
 
@@ -65,11 +65,13 @@ lib/client.js      pre-built client (ModuleLoader CJS handshake)
 | Method | Path | Description |
 |---|---|---|
 | POST | `/archived-sessions/list` | List archived sessions (skips deleted / non-existent ones) |
+| POST | `/archived-sessions/archive` | Archive (hide) a single session |
+| POST | `/archived-sessions/archive-many` | Archive many |
 | POST | `/archived-sessions/restore` | Unarchive a single session |
 | POST | `/archived-sessions/restore-many` | Unarchive many |
 | POST | `/archived-sessions/delete` | Permanently delete a single session (physically removes log, keeps hidden) |
 | POST | `/archived-sessions/delete-many` | Permanently delete many |
-| POST | `/archived-sessions/sessions` | List all sessions (with archived flag) for the Move Session panel |
+| POST | `/archived-sessions/sessions` | List all sessions (with archived flag) for the Session Manager panel |
 | POST | `/archived-sessions/workspaces` | List available target workspaces |
 | POST | `/archived-sessions/move` | Move a session to a target workspace `{ sessionId, targetPath }` |
 
