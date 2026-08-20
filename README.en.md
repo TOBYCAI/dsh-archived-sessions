@@ -19,9 +19,9 @@ A persistent DSH plugin (host + browser halves). Under **Settings → 会话管�
 
 ## Screenshots
 
-![Archived sessions list](assets/screenshot-archived-sessions.png)
+![Session Manager panel](assets/screenshot-session-manager.png)
 
-![Batch multi-select](assets/screenshot-batch-mode.png)
+![Move to workspace (with native directory picker)](assets/screenshot-move-workspace.png)
 
 ## Install
 

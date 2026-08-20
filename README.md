@@ -19,9 +19,9 @@
 
 ## 截图
 
-![归档会话列表](assets/screenshot-archived-sessions.png)
+![会话管理面板](assets/screenshot-session-manager.png)
 
-![批量多选](assets/screenshot-batch-mode.png)
+![移动到工作区（含系统目录选择）](assets/screenshot-move-workspace.png)
 
 ## 安装
 
