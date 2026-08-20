@@ -1,0 +1,7 @@
+# dsh-archived-sessions bundle patch: inserts the plugin row into the profile
+# roster. The node half (exports ".") serves /archived-sessions/* JSON routes;
+# the browser half (exports "./client", declared in package.json dsh.client)
+# renders the "归档会话" Settings section that talks to those routes.
+- insert:
+    - id: dsh-archived-sessions
+      name: 'dsh-archived-sessions'

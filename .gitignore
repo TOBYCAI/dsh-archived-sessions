@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output (pre-built lib/ is committed so users get it out of the box;
+# uncomment if you prefer forcing a build:)
+# lib/
+
+# OS / editor
+.DS_Store
+*.log
