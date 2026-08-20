@@ -15,6 +15,12 @@ A persistent DSH plugin (host + browser halves). Manage every session that has b
 - **Batch multi-select**: one-click batch mode — select-all, restore selected, delete selected (single confirmation for batch delete).
 - **Adaptive UI**: follows the theme tokens (light/dark), stacks vertically on narrow screens; loading / empty / error / busy states, keyboard focus and `prefers-reduced-motion` support.
 
+## Screenshots
+
+![Archived sessions list](assets/screenshot-archived-sessions.png)
+
+![Batch multi-select](assets/screenshot-batch-mode.png)
+
 ## Install
 
 ```sh

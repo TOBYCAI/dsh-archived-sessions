@@ -15,6 +15,12 @@
 - **批量多选**：一键进入批量模式，全选 / 恢复所选 / 删除所选（批量删除一次二次确认）。
 - **自适应 UI**：深浅色跟随主题 token，窄屏自动纵向堆叠；加载/空/错误/操作中状态齐全；支持键盘焦点、`prefers-reduced-motion`。
 
+## 截图
+
+![归档会话列表](assets/screenshot-archived-sessions.png)
+
+![批量多选](assets/screenshot-batch-mode.png)
+
 ## 安装
 
 ```sh
