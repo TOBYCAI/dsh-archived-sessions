@@ -95,15 +95,19 @@ const CSS = `
 .dtl-list code,.dtl-paths code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:var(--dsw-alias-label-primary);word-break:break-all}
 .dtl-filetool{color:var(--dsw-alias-label-tertiary)}
 .dtl-paths{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--dsw-alias-label-secondary);word-break:break-all}
-.more-backdrop{position:fixed;inset:0;z-index:40;background:transparent}
 .more-wrap{position:relative;flex:none}
 .more-btn{appearance:none;width:28px;height:28px;border:none;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1}
 .more-btn:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
-.more-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:50;min-width:150px;padding:5px;background:var(--dsw-alias-fill-elevated);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:0 8px 24px rgb(0 0 0/.16);display:flex;flex-direction:column;gap:1px}
+.more-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:60;min-width:160px;padding:5px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l3);border-radius:10px;box-shadow:0 10px 32px rgb(0 0 0/.24);display:flex;flex-direction:column;gap:1px}
 .more-item{appearance:none;display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border:none;background:transparent;color:var(--dsw-alias-label-primary);border-radius:7px;font-size:12.5px;cursor:pointer;white-space:nowrap;text-align:left}
 .more-item:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .more-item-danger{color:var(--dsw-alias-state-error-primary)}
 .more-item-danger:hover{background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 10%,transparent);color:var(--dsw-alias-state-error-primary)}
+.dlg-backdrop{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.dlg{width:min(420px,92vw);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l3);border-radius:14px;padding:18px;box-shadow:0 16px 48px rgb(0 0 0/.28);display:flex;flex-direction:column;gap:12px}
+.dlg-title{font-size:15px;font-weight:650;color:var(--dsw-alias-label-primary);margin:0}
+.dlg-text{font-size:13px;line-height:1.6;color:var(--dsw-alias-label-secondary);margin:0;word-break:break-all}
+.dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:2px}
 `
 
 function fmtDate(iso) {
@@ -197,7 +201,7 @@ function SessionPanel({ workspacesSvc }) {
   const [workspaces, setWorkspaces] = useState([])
   const [filter, setFilter] = useState('all') // 'all' | 'archived'
   const [selected, setSelected] = useState({})
-  const [confirmDel, setConfirmDel] = useState(null)
+  const [delTarget, setDelTarget] = useState(null)
   const [confirmBatch, setConfirmBatch] = useState(false)
   const [busy, setBusy] = useState(null)
   const [openMove, setOpenMove] = useState(null)
@@ -212,6 +216,7 @@ function SessionPanel({ workspacesSvc }) {
   const [detailsLoading, setDetailsLoading] = useState(null)
   const [openMenu, setOpenMenu] = useState(null)
   const timer = useRef(null)
+  const menuRef = useRef(null)
 
   const showToast = (msg) => {
     if (timer.current) clearTimeout(timer.current)
@@ -229,7 +234,7 @@ function SessionPanel({ workspacesSvc }) {
         setSessions(s.items || [])
         setWorkspaces(works.items || [])
         setSelected({})
-        setConfirmDel(null)
+        setDelTarget(null)
         setConfirmBatch(false)
         if (!targetWs && works.items && works.items.length) setTargetWs(works.items[0].workspaceId)
       })
@@ -241,6 +246,21 @@ function SessionPanel({ workspacesSvc }) {
     return () => { if (timer.current) clearTimeout(timer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Close the ⋯ menu on outside click / Escape (no full-screen backdrop).
+  useEffect(() => {
+    if (openMenu === null) return
+    const onDown = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenu(null)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') setOpenMenu(null) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [openMenu])
 
   const wsPath = (id) => {
     const w = workspaces.find((x) => x.workspaceId === id)
@@ -262,19 +282,29 @@ function SessionPanel({ workspacesSvc }) {
 
   const act = (action, it) => {
     if (busy) return
-    if (action === 'delete') {
-      if (confirmDel !== it.sessionId) { setConfirmDel(it.sessionId); return }
-      setConfirmDel(null)
-    }
     setBusy(it.sessionId)
     postJSON('/archived-sessions/' + action, { sessionId: it.sessionId })
       .then(() => {
         setBusy(null)
         const n = it.title || it.sessionId
-        showToast(action === 'archive' ? `已归档「${n}」` : action === 'restore' ? `已恢复「${n}」` : `已删除 ${n}`)
+        showToast(action === 'archive' ? `已归档「${n}」` : `已恢复「${n}」`)
         refresh()
       })
-      .catch((e) => { setBusy(null); setConfirmDel(null); setError(String((e && e.message) || e)) })
+      .catch((e) => { setBusy(null); setError(String((e && e.message) || e)) })
+  }
+
+  const doDeleteConfirmed = () => {
+    if (!delTarget || busy) return
+    setBusy(delTarget.sessionId)
+    postJSON('/archived-sessions/delete', { sessionId: delTarget.sessionId })
+      .then(() => {
+        setBusy(null)
+        const n = delTarget.title || delTarget.sessionId
+        showToast(`已删除 ${n}`)
+        setDelTarget(null)
+        refresh()
+      })
+      .catch((e) => { setBusy(null); setDelTarget(null); setError(String((e && e.message) || e)) })
   }
 
   const doMove = (it) => {
@@ -358,7 +388,7 @@ function SessionPanel({ workspacesSvc }) {
     setOpenMenu(null)
     if (id === 'restore') act('restore', it)
     else if (id === 'archive') act('archive', it)
-    else if (id === 'delete') act('delete', it)
+    else if (id === 'delete') setDelTarget(it)
     else if (id === 'move') openMoveFor(it)
     else if (id === 'details') toggleDetails(it)
   }
@@ -369,36 +399,33 @@ function SessionPanel({ workspacesSvc }) {
           ['restore', '恢复'],
           ['move', openMove === it.sessionId ? '收起移动' : '移动'],
           ['details', openDetails === it.sessionId ? '收起详情' : '详情'],
-          ['delete', confirmDel === it.sessionId ? '确认删除?' : '删除'],
+          ['delete', '删除'],
         ]
       : [['archive', '归档'], ['move', '移动'], ['details', '详情']]
     return (
-      <>
-        {openMenu === it.sessionId && <div className="more-backdrop" onClick={() => setOpenMenu(null)} />}
-        <div className="more-wrap">
-          <button
-            type="button"
-            className="more-btn"
-            aria-label="更多操作"
-            aria-haspopup="true"
-            aria-expanded={openMenu === it.sessionId}
-            onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === it.sessionId ? null : it.sessionId) }}
-          >⋯</button>
-          {openMenu === it.sessionId && (
-            <div className="more-menu" role="menu">
-              {items.map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="menuitem"
-                  className={'more-item' + (id === 'delete' ? ' more-item-danger' : '')}
-                  onClick={() => runMenu(id, it)}
-                >{label}</button>
-              ))}
-            </div>
-          )}
-        </div>
-      </>
+      <div ref={openMenu === it.sessionId ? menuRef : null} className="more-wrap">
+        <button
+          type="button"
+          className="more-btn"
+          aria-label="更多操作"
+          aria-haspopup="true"
+          aria-expanded={openMenu === it.sessionId}
+          onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === it.sessionId ? null : it.sessionId) }}
+        >⋯</button>
+        {openMenu === it.sessionId && (
+          <div className="more-menu" role="menu">
+            {items.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="menuitem"
+                className={'more-item' + (id === 'delete' ? ' more-item-danger' : '')}
+                onClick={() => runMenu(id, it)}
+              >{label}</button>
+            ))}
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -569,7 +596,7 @@ function SessionPanel({ workspacesSvc }) {
                                   <ul className="dtl-list">{d.files.map((f, i) => <li key={i}><code>{f.path}</code> <span className="dtl-filetool">({f.tool})</span></li>)}</ul>
                                 </div>
                               )}
-                              {d.lineage && (d.lineage.parentSessionId || (d.lineage.children && d.lineage.children.length) || (d.lineage.subagents && d.lineage.subagents.length)) && (
+                              {d.lineage && (d.lineage.parentSessionId || (d.lineage.children && d.lineage.children.length > 0) || (d.lineage.subagents && d.lineage.subagents.length > 0)) && (
                                 <div className="dtl-sec"><div className="dtl-sec-t">血统</div>
                                   <div className="dtl-paths">
                                     {d.lineage.parentSessionId && <div>父会话: <code>{d.lineage.parentSessionId}</code></div>}
@@ -591,6 +618,18 @@ function SessionPanel({ workspacesSvc }) {
         </>
       )}
       {toast && <div className="archv-status" role="status">{toast}</div>}
+      {delTarget && (
+        <div className="dlg-backdrop" onClick={() => setDelTarget(null)}>
+          <div className="dlg" role="alertdialog" aria-modal="true" aria-label="删除会话" onClick={(e) => e.stopPropagation()}>
+            <h3 className="dlg-title">删除会话</h3>
+            <p className="dlg-text">确认彻底删除「{delTarget.title || delTarget.sessionId}」？该操作会物理删除会话日志，不可恢复。</p>
+            <div className="dlg-actions">
+              <button type="button" className="archv-btn" disabled={busy !== null} onClick={() => setDelTarget(null)}>取消</button>
+              <button type="button" className="archv-btn archv-del" disabled={busy !== null} onClick={doDeleteConfirmed}>{busy === delTarget.sessionId ? '删除中…' : '确认删除'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
