@@ -342,9 +342,12 @@ export function apply(ctx) {
     }
     let sizeBytes = null
     try {
-      if (typeof sp.artifactInfo === 'function') {
-        const artifact = await sp.artifactInfo(sid)
-        if (artifact && typeof artifact.sizeBytes === 'number') sizeBytes = artifact.sizeBytes
+      // rc.8 的 sessionPersistence 后端没有 artifactInfo；用 locate(meta) 拿日志
+      // 文件真实路径后 stat 出字节数（磁盘占用）。
+      const loc = sp.locate(meta)
+      if (loc && typeof loc.path === 'string' && loc.path) {
+        const st = await stat(loc.path)
+        if (st && typeof st.size === 'number') sizeBytes = st.size
       }
     } catch (e) { sizeBytes = null }
     let lastTime = typeof meta && typeof meta.createdAt === 'number' ? meta.createdAt : 0
