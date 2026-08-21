@@ -16,6 +16,7 @@ A persistent DSH plugin (host + browser halves). Under **Settings → 会话管�
 - **Move to a workspace**: pick an **existing workspace**, or enter a **new directory path** (auto-created); the new-path mode also lets you open the **native OS directory picker** with a **「浏览…」** button. The session's working directory and log are migrated, and it moves into the corresponding workspace group. Sessions that are currently open must be switched away from first.
 - **Batch multi-select**: select-all / archive selected / restore selected / delete selected (single confirmation for batch delete).
 - **Adaptive UI**: follows the theme tokens (light/dark), stacks vertically on narrow screens; loading / empty / error / busy states, keyboard focus and `prefers-reduced-motion` support; dedicated archive-box nav icon.
+- **Session details (v2.0.0)**: expand any session with a **「详情」** toggle to see **disk usage**, **turns / steps / user·assistant messages / tool calls / image attachments** stats, **tool-usage breakdown**, **search·fetch records**, the **write/edit file list** (already filtered for paths that no longer exist on disk), and **lineage** (parent session / child sessions / subagents) — handy for understanding each session's cost and output, and for cleaning up large sessions. Inspired by the community plugin `Zephyr-vibe/dsh-archived-sessions`'s buildDetails (taking its essence).
 
 ## Screenshots
 
@@ -74,6 +75,7 @@ lib/client.js      pre-built client (ModuleLoader CJS handshake)
 | POST | `/archived-sessions/sessions` | List all sessions (with archived flag) for the Session Manager panel |
 | POST | `/archived-sessions/workspaces` | List available target workspaces |
 | POST | `/archived-sessions/move` | Move a session to a target workspace `{ sessionId, targetPath }` |
+| POST | `/archived-sessions/details` | Session details (disk / stats / tools / fetch / files / lineage) `{ sessionId }` |
 
 > On delete the session **stays archived** (is not unarchived), so it won't pop back into the sidebar / "ungrouped"; entries whose log is already gone are skipped.
 > DSH has no official session-delete API; this plugin implements "physically remove log + detach ownership + keep hidden".
