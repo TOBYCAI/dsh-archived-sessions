@@ -1,6 +1,6 @@
 # dsh-sessions-manager
 
-> English | [中文](./README.md)
+> 中文 | English
 
 > Manage **all your sessions** in DSH from one place — **Session Manager**.
 > Archive / restore / permanently delete / move to another workspace, with workspace tags and session dates, plus batch actions.
@@ -16,13 +16,13 @@ A persistent DSH plugin (host + browser halves). Under **Settings → 会话管�
 - **Move to a workspace**: pick an **existing workspace**, or enter a **new directory path** (auto-created); the new-path mode also lets you open the **native OS directory picker** with a **「浏览…」** button. The session's working directory and log are migrated, and it moves into the corresponding workspace group. Sessions that are currently open must be switched away from first.
 - **Batch multi-select**: select-all / archive selected / restore selected / delete selected (single confirmation for batch delete).
 - **Adaptive UI**: follows the theme tokens (light/dark), stacks vertically on narrow screens; loading / empty / error / busy states, keyboard focus and `prefers-reduced-motion` support; dedicated archive-box nav icon.
-- **Session details (v2.0.0)**: expand any session with a **「详情」** toggle to see **disk usage**, **turns / steps / user·assistant messages / tool calls / image attachments** stats, **tool-usage breakdown**, **search·fetch records**, the **write/edit file list** (already filtered for paths that no longer exist on disk), and **lineage** (parent session / child sessions / subagents) — handy for understanding each session's cost and output, and for cleaning up large sessions. Inspired by the community plugin `Zephyr-vibe/dsh-archived-sessions`'s buildDetails (taking its essence).
+- **Session details (v2.0.0)**: expand any session with a **「详情」** toggle to see **disk usage**, **turns / steps / user·assistant messages / tool calls / image attachments** stats, **tool-usage breakdown**, **search·fetch records**, the **write/edit file list** (already filtered for paths that no longer exist on disk), and **lineage** (parent session / child sessions / subagents) — handy for understanding each session's cost and output, and for cleaning up large sessions. The detail statistics follow the same approach as the community plugin `Zephyr-vibe/dsh-archived-sessions`.
 
 ## Screenshots
 
 ![Session Manager panel (v2.0.0)](assets/screenshot-session-manager.png)
 
-![Session actions ⋯ menu](assets/screenshot-session-menu.png)
+![Session details (disk usage / stats / tool usage)](assets/screenshot-session-details.png)
 
 ## Install
 
