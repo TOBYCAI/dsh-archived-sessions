@@ -20,9 +20,9 @@
 
 ## 截图
 
-![会话管理面板](assets/screenshot-session-manager.png)
+![会话管理面板（v2.0.0）](assets/screenshot-session-manager.png)
 
-![移动到工作区（含系统目录选择）](assets/screenshot-move-workspace.png)
+![会话操作 ⋯ 菜单](assets/screenshot-session-menu.png)
 
 ## 安装
 

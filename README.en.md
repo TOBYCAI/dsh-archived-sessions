@@ -20,9 +20,9 @@ A persistent DSH plugin (host + browser halves). Under **Settings → 会话管�
 
 ## Screenshots
 
-![Session Manager panel](assets/screenshot-session-manager.png)
+![Session Manager panel (v2.0.0)](assets/screenshot-session-manager.png)
 
-![Move to workspace (with native directory picker)](assets/screenshot-move-workspace.png)
+![Session actions ⋯ menu](assets/screenshot-session-menu.png)
 
 ## Install
 
