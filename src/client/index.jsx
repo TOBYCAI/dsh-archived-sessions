@@ -493,6 +493,58 @@ function SessionPanel({ workspacesSvc }) {
                         </div>
                       </div>
                     )}
+                    {openDetails === it.sessionId && (
+                      <div className="dtl-sheet" role="region" aria-label="会话详情">
+                        <div className="dtl-sheet-head">
+                          <h3 className="dtl-sheet-title">会话详情</h3>
+                          <button type="button" className="mv-sheet-close" aria-label="关闭详情" onClick={() => setOpenDetails(null)}>×</button>
+                        </div>
+                        {detailsLoading === it.sessionId ? (
+                          <div className="archv-skel" aria-label="加载中">{[0, 1].map((i) => <div key={i} className="archv-skel-card" />)}</div>
+                        ) : (() => {
+                          const d = details[it.sessionId]
+                          if (!d) return <div className="dtl-paths">暂无详情</div>
+                          const st = d.stats || {}
+                          const tools = st.toolCounts ? Object.entries(st.toolCounts).sort((a, b) => b[1] - a[1]).slice(0, 10) : []
+                          return (
+                            <div>
+                              <div className="dtl-grid">
+                                <div className="dtl-cell"><span className="dtl-k">磁盘占用</span><span className="dtl-v">{fmtBytes(d.sizeBytes) || '—'}</span></div>
+                                <div className="dtl-cell"><span className="dtl-k">轮次 / 步骤</span><span className="dtl-v">{st.turns ?? 0} / {st.steps ?? 0}</span></div>
+                                <div className="dtl-cell"><span className="dtl-k">用户 / 助手</span><span className="dtl-v">{st.userMessages ?? 0} / {st.assistantMessages ?? 0}</span></div>
+                                <div className="dtl-cell"><span className="dtl-k">工具调用</span><span className="dtl-v">{st.toolCalls ?? 0}</span></div>
+                                <div className="dtl-cell"><span className="dtl-k">图片附件</span><span className="dtl-v">{st.attachments ?? 0}</span></div>
+                                <div className="dtl-cell"><span className="dtl-k">创建 / 更新</span><span className="dtl-v">{fmtDate(d.createdAt) || '—'} · {fmtDate(d.updatedAt) || '—'}</span></div>
+                              </div>
+                              {tools.length > 0 && (
+                                <div className="dtl-sec"><div className="dtl-sec-t">工具使用</div>
+                                  <div className="dtl-tags">{tools.map(([t, c]) => <span className="dtl-tag" key={t}>{t} ×{c}</span>)}</div>
+                                </div>
+                              )}
+                              {st.fetches && st.fetches.length > 0 && (
+                                <div className="dtl-sec"><div className="dtl-sec-t">搜索 / 抓取</div>
+                                  <ul className="dtl-list">{st.fetches.map((f, i) => <li key={i}>{f.tool}{f.query ? ` 「${f.query}」` : ''}</li>)}</ul>
+                                </div>
+                              )}
+                              {d.files && d.files.length > 0 && (
+                                <div className="dtl-sec"><div className="dtl-sec-t">写过的文件（{d.files.length}）</div>
+                                  <ul className="dtl-list">{d.files.map((f, i) => <li key={i}><code>{f.path}</code> <span className="dtl-filetool">({f.tool})</span></li>)}</ul>
+                                </div>
+                              )}
+                              {d.lineage && (d.lineage.parentSessionId || (d.lineage.children && d.lineage.children.length) || (d.lineage.subagents && d.lineage.subagents.length)) && (
+                                <div className="dtl-sec"><div className="dtl-sec-t">血统</div>
+                                  <div className="dtl-paths">
+                                    {d.lineage.parentSessionId && <div>父会话: <code>{d.lineage.parentSessionId}</code></div>}
+                                    {d.lineage.children && d.lineage.children.length > 0 && <div>子会话 ({d.lineage.children.length}): <code>{d.lineage.children.join(', ')}</code></div>}
+                                    {d.lineage.subagents && d.lineage.subagents.length > 0 && <div>子代理 ({d.lineage.subagents.length}): <code>{d.lineage.subagents.join(', ')}</code></div>}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )
               })}
