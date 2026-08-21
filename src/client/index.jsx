@@ -63,7 +63,7 @@ const CSS = `
 @keyframes archv-pop{from{opacity:0;transform:translateX(-50%) translateY(10px)}}
 @media (prefers-reduced-motion:reduce){.archv-skel-card::after{animation:none}.archv-card,.archv-btn{transition:none}.archv-status,.archv-spin{animation:none}}
 @media (max-width:640px){.archv-card{flex-direction:column;align-items:stretch;gap:10px}.archv-actions{justify-content:flex-end}}
-.mv-sheet{width:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;margin-top:12px;padding:14px;border:1px solid var(--dsw-alias-border-l2);border-left:3px solid var(--dsw-alias-state-business-primary);border-radius:10px;background:var(--dsw-alias-fill-subtle)}
+.mv-sheet{width:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;margin-top:12px;padding:14px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-fill-subtle)}
 .mv-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .mv-sheet-title{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary);margin:0}
 .mv-sheet-close{appearance:none;width:26px;height:26px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
@@ -80,7 +80,7 @@ const CSS = `
 .mv-browse-row input[type=text]{flex:1;min-width:0}
 .mv-foot{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:2px}
 @media (max-width:640px){.archv-row{flex-wrap:wrap}.mv-sheet{padding:12px}}
-.dtl-sheet{margin-top:12px;padding:14px;border:1px solid var(--dsw-alias-border-l2);border-left:3px solid #4c8dff;border-radius:10px;background:var(--dsw-alias-fill-subtle)}
+.dtl-sheet{margin-top:12px;padding:14px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-fill-subtle)}
 .dtl-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .dtl-sheet-title{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary);margin:0}
 .dtl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px}
@@ -95,6 +95,15 @@ const CSS = `
 .dtl-list code,.dtl-paths code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:var(--dsw-alias-label-primary);word-break:break-all}
 .dtl-filetool{color:var(--dsw-alias-label-tertiary)}
 .dtl-paths{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--dsw-alias-label-secondary);word-break:break-all}
+.more-backdrop{position:fixed;inset:0;z-index:40;background:transparent}
+.more-wrap{position:relative;flex:none}
+.more-btn{appearance:none;width:28px;height:28px;border:none;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.more-btn:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.more-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:50;min-width:150px;padding:5px;background:var(--dsw-alias-fill-elevated);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:0 8px 24px rgb(0 0 0/.16);display:flex;flex-direction:column;gap:1px}
+.more-item{appearance:none;display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border:none;background:transparent;color:var(--dsw-alias-label-primary);border-radius:7px;font-size:12.5px;cursor:pointer;white-space:nowrap;text-align:left}
+.more-item:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.more-item-danger{color:var(--dsw-alias-state-error-primary)}
+.more-item-danger:hover{background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 10%,transparent);color:var(--dsw-alias-state-error-primary)}
 `
 
 function fmtDate(iso) {
@@ -201,6 +210,7 @@ function SessionPanel({ workspacesSvc }) {
   const [details, setDetails] = useState({})
   const [openDetails, setOpenDetails] = useState(null)
   const [detailsLoading, setDetailsLoading] = useState(null)
+  const [openMenu, setOpenMenu] = useState(null)
   const timer = useRef(null)
 
   const showToast = (msg) => {
@@ -344,23 +354,51 @@ function SessionPanel({ workspacesSvc }) {
     return <span className="archv-wtag">未分组</span>
   }
 
-  const rowActions = (it) => {
-    if (it.archived) {
-      return (
-        <div className="archv-actions" role="group" aria-label="会话操作">
-          <button type="button" className="archv-btn archv-go" disabled={busy !== null} onClick={() => act('restore', it)}>恢复</button>
-          <button type="button" className="archv-btn archv-go" disabled={busy !== null} onClick={() => openMoveFor(it)}>{openMove === it.sessionId ? '收起' : '移动…'}</button>
-          <button type="button" className="archv-btn" disabled={busy !== null} onClick={() => toggleDetails(it)}>{openDetails === it.sessionId ? '收起详情' : '详情'}</button>
-          <button type="button" className="archv-btn archv-del" disabled={busy !== null} onClick={() => act('delete', it)}>{confirmDel === it.sessionId ? '确认删除?' : '删除'}</button>
-        </div>
-      )
-    }
+  const runMenu = (id, it) => {
+    setOpenMenu(null)
+    if (id === 'restore') act('restore', it)
+    else if (id === 'archive') act('archive', it)
+    else if (id === 'delete') act('delete', it)
+    else if (id === 'move') openMoveFor(it)
+    else if (id === 'details') toggleDetails(it)
+  }
+
+  const rowMenu = (it) => {
+    const items = it.archived
+      ? [
+          ['restore', '恢复'],
+          ['move', openMove === it.sessionId ? '收起移动' : '移动'],
+          ['details', openDetails === it.sessionId ? '收起详情' : '详情'],
+          ['delete', confirmDel === it.sessionId ? '确认删除?' : '删除'],
+        ]
+      : [['archive', '归档'], ['move', '移动'], ['details', '详情']]
     return (
-      <div className="archv-actions" role="group" aria-label="会话操作">
-        <button type="button" className="archv-btn" disabled={busy !== null} onClick={() => act('archive', it)}>归档</button>
-        <button type="button" className="archv-btn archv-go" disabled={busy !== null} onClick={() => openMoveFor(it)}>{openMove === it.sessionId ? '收起' : '移动…'}</button>
-        <button type="button" className="archv-btn" disabled={busy !== null} onClick={() => toggleDetails(it)}>{openDetails === it.sessionId ? '收起详情' : '详情'}</button>
-      </div>
+      <>
+        {openMenu === it.sessionId && <div className="more-backdrop" onClick={() => setOpenMenu(null)} />}
+        <div className="more-wrap">
+          <button
+            type="button"
+            className="more-btn"
+            aria-label="更多操作"
+            aria-haspopup="true"
+            aria-expanded={openMenu === it.sessionId}
+            onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === it.sessionId ? null : it.sessionId) }}
+          >⋯</button>
+          {openMenu === it.sessionId && (
+            <div className="more-menu" role="menu">
+              {items.map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="menuitem"
+                  className={'more-item' + (id === 'delete' ? ' more-item-danger' : '')}
+                  onClick={() => runMenu(id, it)}
+                >{label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      </>
     )
   }
 
@@ -439,7 +477,7 @@ function SessionPanel({ workspacesSvc }) {
                             <span className="archv-id">{it.sessionId}</span>
                           </div>
                         </div>
-                        {rowActions(it)}
+                        {rowMenu(it)}
                       </div>
                     </div>
                     {expanded && (
