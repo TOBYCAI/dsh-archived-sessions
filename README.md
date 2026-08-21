@@ -89,6 +89,7 @@ lib/client.js      预构建 client（ModuleLoader CJS handshake）
 
 ## 兼容性
 
+- **适配系统**：跨平台（macOS / Windows / Linux）——只要 DSH 能在该系统运行即可；本插件 host 基于 Node（约 `^22.19` 或 `>=24`）、浏览器端为 React，不依赖特定操作系统 API。
 - DSH Desktop / web 均可（同一套 host + client）。
 - peerDependencies 见 `package.json`；`react`、`@deepseek-ai/*` 由 DSH 运行时提供。
 

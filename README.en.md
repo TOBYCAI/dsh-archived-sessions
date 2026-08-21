@@ -89,6 +89,7 @@ lib/client.js      pre-built client (ModuleLoader CJS handshake)
 
 ## Compatibility
 
+- **Supported platforms**: cross-platform (macOS / Windows / Linux) — wherever DSH runs the plugin runs; the host half is Node (about `^22.19` or `>=24`) and the client is React, with no OS-specific APIs.
 - Works in both DSH Desktop and DSH web (same host + client halves).
 - Peer dependencies are listed in `package.json`; `react` and `@deepseek-ai/*` are provided by the DSH runtime.
 
