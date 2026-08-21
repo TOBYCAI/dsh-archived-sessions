@@ -1,4 +1,4 @@
-# dsh-archived-sessions
+# dsh-sessions-manager
 
 > [English](./README.en.md) | 中文
 
@@ -27,14 +27,14 @@
 
 ```sh
 # 方式一：Git 依赖直装（推荐，无需本地 clone，重启 DSH 生效）
-dsh plugin --profile desktop add "github:TOBYCAI/dsh-archived-sessions"
+dsh plugin --profile desktop add "github:TOBYCAI/dsh-sessions-manager"
 
 # web 端（若你也用 dsh web）：
-dsh plugin --profile web add "github:TOBYCAI/dsh-archived-sessions"
+dsh plugin --profile web add "github:TOBYCAI/dsh-sessions-manager"
 
 # 方式二：本地 link（开发调试）
-git clone https://github.com/TOBYCAI/dsh-archived-sessions.git
-dsh plugin --profile desktop add link:/path/to/dsh-archived-sessions
+git clone https://github.com/TOBYCAI/dsh-sessions-manager.git
+dsh plugin --profile desktop add link:/path/to/dsh-sessions-manager
 ```
 
 > 装完**重启 DSH**（或刷新页面重新加载 bundle）后，设置 → 会话管理 即可用。
@@ -42,8 +42,8 @@ dsh plugin --profile desktop add link:/path/to/dsh-archived-sessions
 ## 卸载
 
 ```sh
-dsh plugin --profile desktop remove dsh-archived-sessions
-dsh plugin --profile web remove dsh-archived-sessions
+dsh plugin --profile desktop remove dsh-sessions-manager
+dsh plugin --profile web remove dsh-sessions-manager
 ```
 
 ## 结构

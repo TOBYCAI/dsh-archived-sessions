@@ -1,5 +1,5 @@
 /**
- * dsh-archived-sessions — build script (mirrors dsh-skill-picker).
+ * dsh-sessions-manager — build script (mirrors dsh-skill-picker).
  *
  * Host half (lib/index.js): plain Node ESM, externalizing @deepseek-ai/dsh-*
  * plus cordis (the profile's node_modules provide them).
@@ -41,7 +41,7 @@ await build({
   jsx: 'automatic',
   external: [...dshExternal, 'react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime', 'scheduler'],
   banner: {
-    js: "window.__ModuleLoader__.load({ id: 'dsh-archived-sessions', factory: (require) => { var module = { exports: {} }; var exports = module.exports;",
+    js: "window.__ModuleLoader__.load({ id: 'dsh-sessions-manager', factory: (require) => { var module = { exports: {} }; var exports = module.exports;",
   },
   footer: {
     js: 'return module.exports; } });',

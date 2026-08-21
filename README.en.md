@@ -1,4 +1,4 @@
-# dsh-archived-sessions
+# dsh-sessions-manager
 
 > English | [中文](./README.md)
 
@@ -27,14 +27,14 @@ A persistent DSH plugin (host + browser halves). Under **Settings → 会话管�
 
 ```sh
 # Option 1: install as a Git dependency (recommended — no local clone; restart DSH to apply)
-dsh plugin --profile desktop add "github:TOBYCAI/dsh-archived-sessions"
+dsh plugin --profile desktop add "github:TOBYCAI/dsh-sessions-manager"
 
 # For the web UI (if you also use dsh web):
-dsh plugin --profile web add "github:TOBYCAI/dsh-archived-sessions"
+dsh plugin --profile web add "github:TOBYCAI/dsh-sessions-manager"
 
 # Option 2: local link (for development)
-git clone https://github.com/TOBYCAI/dsh-archived-sessions.git
-dsh plugin --profile desktop add link:/path/to/dsh-archived-sessions
+git clone https://github.com/TOBYCAI/dsh-sessions-manager.git
+dsh plugin --profile desktop add link:/path/to/dsh-sessions-manager
 ```
 
 > After installing, **restart DSH** (or refresh the page to reload the bundle). Then Settings → 会话管理 (Session Manager) becomes available.
@@ -42,8 +42,8 @@ dsh plugin --profile desktop add link:/path/to/dsh-archived-sessions
 ## Uninstall
 
 ```sh
-dsh plugin --profile desktop remove dsh-archived-sessions
-dsh plugin --profile web remove dsh-archived-sessions
+dsh plugin --profile desktop remove dsh-sessions-manager
+dsh plugin --profile web remove dsh-sessions-manager
 ```
 
 ## Structure

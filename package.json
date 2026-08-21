@@ -1,6 +1,6 @@
 {
-  "name": "dsh-archived-sessions",
-  "description": "DSH 设置面板会话管理器：归档 / 恢复 / 彻底删除 / 移动到其他工作区，带工作区标签与会话日期；统一「会话管理」面板。",
+  "name": "dsh-sessions-manager",
+  "description": "DSH 设置面板会话管理器：归档 / 恢复 / 彻底删除 / 移动到其他工作区，带工作区标签与会话日期；统一「会话管理」面板。Session manager for the DeepSeek Harness settings panel — archive / restore / permanently delete / move sessions across workspaces, with workspace tags & session dates in one unified panel.",
   "version": "1.0.2",
   "type": "module",
   "main": "lib/index.js",
@@ -9,8 +9,31 @@
     "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
+  "files": [
+    "lib",
+    "src",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "assets"
+  ],
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "dsh",
+    "session-manager",
+    "archived-sessions",
+    "session"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TOBYCAI/dsh-sessions-manager.git"
+  },
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "prepack": "node build.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.25.0"
@@ -40,5 +63,8 @@
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.6",
     "react": "^18.2.0"
+  },
+  "allowScripts": {
+    "esbuild@0.25.0": true
   }
 }

@@ -1,5 +1,5 @@
 /**
- * dsh-archived-sessions — browser half: renders a single "会话管理" settings
+ * dsh-sessions-manager — browser half: renders a single "会话管理" settings
  * section (settings.section list slot) that unifies archived-session
  * management and cross-workspace moving. It talks to the host half's
  * /archived-sessions/* JSON routes by fetch, showing every conversation with
@@ -7,7 +7,7 @@
  * actions. All DOM/runtime wiring failures are logged, never thrown — a thrown
  * plugin apply takes down the whole web-shell boot.
  *
- * @module dsh-archived-sessions/client
+ * @module dsh-sessions-manager/client
  */
 
 import React, { useEffect, useRef, useState } from 'react'

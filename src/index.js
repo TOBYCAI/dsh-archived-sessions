@@ -1,4 +1,4 @@
-// dsh-archived-sessions — host half.
+// dsh-sessions-manager — host half.
 //
 // Serves /archived-sessions/* JSON routes (list / restore / restore-many /
 // delete / delete-many / sessions / workspaces / move) over the host
@@ -11,7 +11,7 @@ import { mkdir, realpath, rename, unlink } from 'node:fs/promises'
 import { basename, isAbsolute, join } from 'node:path'
 import { homedir } from 'node:os'
 
-export const name = 'dsh-archived-sessions'
+export const name = 'dsh-sessions-manager'
 export const inject = ['webServer', 'workspaceRegistry', 'sessionPersistence', 'sessionQuery', 'storageDomain']
 
 const MAX_TITLE = 80
@@ -503,5 +503,5 @@ export function apply(ctx) {
     }))
 
     return () => { for (const d of disposers) d() }
-  }, 'dsh-archived-sessions: routes')
+  }, 'dsh-sessions-manager: routes')
 }
