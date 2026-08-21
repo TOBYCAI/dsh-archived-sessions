@@ -2,6 +2,11 @@
 
 > 中文 | [English](./README.en.md)
 
+![GitHub stars](https://img.shields.io/github/stars/TOBYCAI/dsh-sessions-manager?style=flat-square&color=facc15)
+![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
+![daily compat](https://img.shields.io/github/actions/workflow/status/TOBYCAI/dsh-sessions-manager/compat.yml?branch=main&label=daily-compat&style=flat-square)
+![DSH plugin](https://img.shields.io/badge/DSH-plugin-4d6bfe?style=flat-square)
+
 > DSH 设置面板**「会话管理」**：一个入口统一管理全部会话。
 > 归档 / 恢复 / 彻底删除 / 移动到其他工作区，带工作区标签与会话日期，支持批量。
 > 工作区目录可选「已有」或「新建」，新建支持**系统目录选择**；设置导航带专属归档盒图标。

@@ -1,0 +1,24 @@
+name: compat
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 4 * * *'   # daily compat check
+
+jobs:
+  build:
+    name: dsh-plugin build check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install deps
+        run: npm install
+      - name: Build plugin (host + client)
+        run: npm run build
+      - name: Verify host bundle loads
+        run: node -e "import('./lib/index.js').then(m => { if (m.name !== 'dsh-sessions-manager') process.exit(1); }).catch(e => { console.error(e); process.exit(1); })"

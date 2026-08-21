@@ -2,6 +2,11 @@
 
 > 中文 | English
 
+![GitHub stars](https://img.shields.io/github/stars/TOBYCAI/dsh-sessions-manager?style=flat-square&color=facc15)
+![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
+![daily compat](https://img.shields.io/github/actions/workflow/status/TOBYCAI/dsh-sessions-manager/compat.yml?branch=main&label=daily-compat&style=flat-square)
+![DSH plugin](https://img.shields.io/badge/DSH-plugin-4d6bfe?style=flat-square)
+
 > Manage **all your sessions** in DSH from one place — **Session Manager**.
 > Archive / restore / permanently delete / move to another workspace, with workspace tags and session dates, plus batch actions.
 > Target directories can be an **existing workspace** or a **new path** (auto-created); the new-path mode also supports the **native OS directory picker**, and the settings nav gets a dedicated archive-box icon.
