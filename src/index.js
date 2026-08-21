@@ -7,7 +7,7 @@
 // (workspaceRegistry + storageDomain), folds titles/dates/workspace tags from
 // session persistence, physically removes a session's log file on delete, and
 // relocates a conversation (session) between workspaces on move.
-import { mkdir, realpath, rename, unlink } from 'node:fs/promises'
+import { mkdir, realpath, rename, stat, unlink } from 'node:fs/promises'
 import { basename, isAbsolute, join } from 'node:path'
 import { homedir } from 'node:os'
 
@@ -15,6 +15,11 @@ export const name = 'dsh-sessions-manager'
 export const inject = ['webServer', 'workspaceRegistry', 'sessionPersistence', 'sessionQuery', 'storageDomain']
 
 const MAX_TITLE = 80
+// -- per-session detail aggregation (v2.0: 取 Zephyr-vibe buildDetails 精华) --
+// 识别“搜索/抓取”类工具，用来收集 fetch 记录。
+const FETCH_TOOL_RE = /search|fetch|download|browse/i
+const MAX_FETCHES = 12   // fetch 记录上限（防响应过大）
+const MAX_FILES = 20     // write/edit 文件列表上限
 
 function json(res, value, status = 200) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
@@ -317,6 +322,125 @@ export function apply(ctx) {
     return items
   }
 
+  // 聚合一条会话的详情（磁盘占用 / 轮次·步数·消息数 / 工具统计 / fetch /
+  // write/edit 文件 / 血统 parent/children/subagents）。live 与持久化会话都可读。
+  // 所有统计对未知事件类型容错；fetch 与 files 做上限截断，files 用 stat 过滤
+  // 磁盘上已不存在的路径，避免详情面板列出已删除文件。
+  async function buildDetails(sid) {
+    const sessions = ctx.get('sessions')
+    const live = sessions && sessions.get(sid)
+    let meta = null
+    let events = []
+    if (live !== void 0) {
+      meta = (live && live.header) || null
+      try { events = Array.isArray(live.events) ? [...live.events] : [] } catch (e) { events = [] }
+    } else {
+      const r = await sp.readFrom(sid, 0)
+      if (!r || !r.meta) throw new Error('找不到该会话的记录（会话不存在）')
+      meta = r.meta
+      events = Array.isArray(r.events) ? r.events : []
+    }
+    let sizeBytes = null
+    try {
+      if (typeof sp.artifactInfo === 'function') {
+        const artifact = await sp.artifactInfo(sid)
+        if (artifact && typeof artifact.sizeBytes === 'number') sizeBytes = artifact.sizeBytes
+      }
+    } catch (e) { sizeBytes = null }
+    let lastTime = typeof meta && typeof meta.createdAt === 'number' ? meta.createdAt : 0
+    const fileSet = new Map()
+    const stats = {
+      turns: 0, steps: 0, userMessages: 0, assistantMessages: 0,
+      toolCalls: 0, attachments: 0, toolCounts: {}, fetches: [],
+    }
+    const turnSeen = new Set()
+    const stepSeen = new Set()
+    for (const ev of events) {
+      if (ev && typeof ev.time === 'number' && ev.time > lastTime) lastTime = ev.time
+      const d = (ev && ev.data && typeof ev.data === 'object') ? ev.data : {}
+      const type = ev && ev.type
+      switch (type) {
+        case 'turn/start':
+          if (typeof d.turn === 'number') turnSeen.add(d.turn)
+          break
+        case 'step/start':
+          if (typeof d.step === 'number') stepSeen.add(d.step)
+          break
+        case 'user/message':
+          stats.userMessages++
+          if (Array.isArray(d.content)) for (const b of d.content) if (b && b.type === 'image') stats.attachments++
+          break
+        case 'assistant/message':
+          stats.assistantMessages++
+          break
+        case 'tool/call': {
+          stats.toolCalls++
+          const tn = typeof d.name === 'string' && d.name ? d.name : 'tool'
+          stats.toolCounts[tn] = (stats.toolCounts[tn] || 0) + 1
+          if (FETCH_TOOL_RE.test(tn)) {
+            let query
+            try {
+              const a = typeof d.arguments === 'string' ? JSON.parse(d.arguments) : d.arguments
+              query = typeof a?.query === 'string' ? a.query : typeof a?.url === 'string' ? a.url : typeof a?.q === 'string' ? a.q : undefined
+            } catch (e) { query = undefined }
+            stats.fetches.push({ tool: tn, ...(query && query !== '' ? { query } : {}) })
+          }
+          if (tn === 'write' || tn === 'edit') {
+            let argsJ
+            try { argsJ = typeof d.arguments === 'string' ? JSON.parse(d.arguments) : d.arguments } catch (e) { break }
+            const fp = argsJ && typeof argsJ.file_path === 'string' && argsJ.file_path ? argsJ.file_path : undefined
+            if (fp !== undefined && !fileSet.has(fp)) fileSet.set(fp, tn)
+          }
+          break
+        }
+      }
+    }
+    stats.turns = turnSeen.size
+    stats.steps = stepSeen.size
+    if (stats.fetches.length > MAX_FETCHES) stats.fetches = stats.fetches.slice(0, MAX_FETCHES)
+    const fileEntries = [...fileSet.entries()].slice(0, MAX_FILES * 2)
+    const exists = await Promise.all(fileEntries.map(([p]) => stat(p).then(() => true).catch(() => false)))
+    const files = fileEntries
+      .filter((_, i) => exists[i])
+      .map(([path, tool]) => ({ path, tool }))
+      .slice(0, MAX_FILES)
+    // lineage：分叉子会话（非 subagent）与子代理（origin==='subagent'），source 去重。
+    const lineage = {
+      parentSessionId: (meta && typeof meta.parentSession === 'string') ? meta.parentSession : null,
+      children: [],
+      subagents: [],
+    }
+    const childrenSet = new Set()
+    const subagentSet = new Set()
+    try {
+      if (typeof sp.list === 'function') {
+        for (const h of await sp.list()) {
+          if (String(h.parentSession) !== String(sid)) continue
+          if (h.origin === 'subagent') subagentSet.add(h.id); else childrenSet.add(h.id)
+        }
+      }
+    } catch (e) { /* best-effort */ }
+    if (sessions) {
+      try {
+        sessions.list().forEach((s) => {
+          if (String(s.header.parentSession) !== String(sid)) return
+          if (s.header.origin === 'subagent') subagentSet.add(s.id); else childrenSet.add(s.id)
+        })
+      } catch (e) { /* best-effort */ }
+    }
+    lineage.children = [...childrenSet]
+    lineage.subagents = [...subagentSet]
+    return {
+      sessionId: sid,
+      sizeBytes,
+      createdAt: (meta && typeof meta.createdAt === 'number') ? meta.createdAt : null,
+      updatedAt: lastTime || null,
+      files,
+      stats,
+      lineage,
+    }
+  }
+
   ctx.effect(() => {
     const disposers = []
 
@@ -498,6 +622,23 @@ export function apply(ctx) {
           json(res, { ok: true, archived: results.filter((r) => r.ok).length, results })
         } catch (e) {
           json(res, { ok: false, error: String((e && e.message) || e) }, 500)
+        }
+      },
+    }))
+
+    // Per-session details (v2.0): disk usage, turn/step/message counts, tool
+    // usage, fetch records, write/edit files, and lineage.
+    disposers.push(ctx.webServer.register({
+      kind: 'exact',
+      path: '/archived-sessions/details',
+      handler: async (req, res) => {
+        try {
+          const body = await readJsonBody(req)
+          const sid = body && typeof body.sessionId === 'string' ? body.sessionId : null
+          if (!sid) return json(res, { ok: false, error: 'missing sessionId' }, 400)
+          json(res, await buildDetails(sid))
+        } catch (e) {
+          json(res, { error: String((e && e.message) || e) }, (e && e.status) ? e.status : 500)
         }
       },
     }))

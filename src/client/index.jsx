@@ -44,8 +44,8 @@ const CSS = `
 .archv-dot{color:var(--dsw-alias-border-l3);flex:none}
 .archv-check{width:15px;height:15px;accent-color:var(--dsw-alias-state-business-primary);flex:none;cursor:pointer}
 .archv-body{flex:1;min-width:0;display:flex;align-items:center;gap:12px}
-.archv-actions{display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end}
-.archv-btn{appearance:none;min-height:32px;padding:0 12px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-fill-subtle);color:var(--dsw-alias-label-secondary);border-radius:9px;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.archv-actions{display:flex;gap:8px;flex:none;flex-wrap:nowrap;justify-content:flex-end}
+.archv-btn{appearance:none;min-height:32px;padding:0 12px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-fill-subtle);color:var(--dsw-alias-label-secondary);border-radius:9px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
 .archv-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
 .archv-btn:disabled{opacity:.5;cursor:default}
 .archv-del{color:var(--dsw-alias-state-error-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 45%,transparent)}
@@ -80,6 +80,21 @@ const CSS = `
 .mv-browse-row input[type=text]{flex:1;min-width:0}
 .mv-foot{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:2px}
 @media (max-width:640px){.archv-row{flex-wrap:wrap}.mv-sheet{padding:12px}}
+.dtl-sheet{margin-top:12px;padding:14px;border:1px solid var(--dsw-alias-border-l2);border-left:3px solid #4c8dff;border-radius:10px;background:var(--dsw-alias-fill-subtle)}
+.dtl-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dtl-sheet-title{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary);margin:0}
+.dtl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px}
+.dtl-cell{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-fill-elevated);min-width:0}
+.dtl-k{font-size:11px;color:var(--dsw-alias-label-tertiary)}
+.dtl-v{font-size:12px;color:var(--dsw-alias-label-primary);word-break:break-all}
+.dtl-sec{margin-top:12px}
+.dtl-sec-t{font-size:11px;font-weight:600;color:var(--dsw-alias-label-secondary);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px}
+.dtl-tags{display:flex;flex-wrap:wrap;gap:6px}
+.dtl-tag{display:inline-flex;font-size:11px;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-fill-elevated);border:1px solid var(--dsw-alias-border-l2);border-radius:999px;padding:2px 8px}
+.dtl-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--dsw-alias-label-secondary)}
+.dtl-list code,.dtl-paths code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:var(--dsw-alias-label-primary);word-break:break-all}
+.dtl-filetool{color:var(--dsw-alias-label-tertiary)}
+.dtl-paths{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--dsw-alias-label-secondary);word-break:break-all}
 `
 
 function fmtDate(iso) {
@@ -91,6 +106,16 @@ function fmtDate(iso) {
   } catch {
     return String(iso)
   }
+}
+
+function fmtBytes(n) {
+  if (!n && n !== 0) return null
+  if (n < 1024) return `${n} B`
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let v = n
+  let u = -1
+  do { v /= 1024; u++ } while (v >= 1024 && u < units.length - 1)
+  return `${v >= 100 ? v.toFixed(0) : v.toFixed(1)} ${units[u]}`
 }
 
 function pathName(p) {
@@ -173,6 +198,9 @@ function SessionPanel({ workspacesSvc }) {
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
   const [picking, setPicking] = useState(false)
+  const [details, setDetails] = useState({})
+  const [openDetails, setOpenDetails] = useState(null)
+  const [detailsLoading, setDetailsLoading] = useState(null)
   const timer = useRef(null)
 
   const showToast = (msg) => {
@@ -294,6 +322,19 @@ function SessionPanel({ workspacesSvc }) {
     }
   }
 
+  const toggleDetails = (it) => {
+    if (openDetails === it.sessionId) { setOpenDetails(null); return }
+    if (details[it.sessionId]) { setOpenDetails(it.sessionId); return }
+    setDetailsLoading(it.sessionId)
+    postJSON('/archived-sessions/details', { sessionId: it.sessionId })
+      .then((d) => {
+        setDetails((m) => ({ ...m, [it.sessionId]: d }))
+        setDetailsLoading(null)
+        setOpenDetails(it.sessionId)
+      })
+      .catch((e) => { setDetailsLoading(null); setError(String((e && e.message) || e)) })
+  }
+
   const workspaceTag = (it) => {
     if (it.hasWorkspace && it.workspaceGone) {
       return <span className="archv-wtag archv-wgone" title={(it.workspacePath || '') + '（原工作区已删除）'}>工作区已删 · {pathName(it.workspacePath) || '?'}</span>
@@ -306,17 +347,19 @@ function SessionPanel({ workspacesSvc }) {
   const rowActions = (it) => {
     if (it.archived) {
       return (
-        <div className="archv-actions">
+        <div className="archv-actions" role="group" aria-label="会话操作">
           <button type="button" className="archv-btn archv-go" disabled={busy !== null} onClick={() => act('restore', it)}>恢复</button>
           <button type="button" className="archv-btn archv-go" disabled={busy !== null} onClick={() => openMoveFor(it)}>{openMove === it.sessionId ? '收起' : '移动…'}</button>
+          <button type="button" className="archv-btn" disabled={busy !== null} onClick={() => toggleDetails(it)}>{openDetails === it.sessionId ? '收起详情' : '详情'}</button>
           <button type="button" className="archv-btn archv-del" disabled={busy !== null} onClick={() => act('delete', it)}>{confirmDel === it.sessionId ? '确认删除?' : '删除'}</button>
         </div>
       )
     }
     return (
-      <div className="archv-actions">
+      <div className="archv-actions" role="group" aria-label="会话操作">
         <button type="button" className="archv-btn" disabled={busy !== null} onClick={() => act('archive', it)}>归档</button>
         <button type="button" className="archv-btn archv-go" disabled={busy !== null} onClick={() => openMoveFor(it)}>{openMove === it.sessionId ? '收起' : '移动…'}</button>
+        <button type="button" className="archv-btn" disabled={busy !== null} onClick={() => toggleDetails(it)}>{openDetails === it.sessionId ? '收起详情' : '详情'}</button>
       </div>
     )
   }
